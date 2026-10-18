@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -42,14 +42,18 @@ func main() {
 	}
 
 	// create a Gin router
-	r := gin.Default()
+	router := gin.Default()
 
 	// define routers
-	r.GET("/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	if err := r.Run(fmt.Sprintf(":%d", PORT_NUMBER)); err != nil {
-		log.Fatalf("failed to run server: %v", err)
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", PORT_NUMBER),
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
 	}
+	server.ListenAndServe()
 }

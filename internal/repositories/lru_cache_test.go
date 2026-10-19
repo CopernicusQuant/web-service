@@ -27,31 +27,15 @@ func TestLRUCache(t *testing.T) {
 			name:     "returns cache miss for unknown key",
 			capacity: 2,
 			ops: []operation{
-				{
-					name:      "get missing key",
-					action:    "get",
-					key:       "missing",
-					wantFound: false,
-				},
+				{name: "get missing key", action: "get", key: "missing", wantFound: false},
 			},
 		},
 		{
 			name:     "returns stored value",
 			capacity: 2,
 			ops: []operation{
-				{
-					name:   "put value",
-					action: "put",
-					key:    "a",
-					value:  1,
-				},
-				{
-					name:      "get stored value",
-					action:    "get",
-					key:       "a",
-					wantValue: 1,
-					wantFound: true,
-				},
+				{name: "put value", action: "put", key: "a", value: 1},
+				{name: "get stored value", action: "get", key: "a", wantValue: 1, wantFound: true},
 			},
 		},
 		{

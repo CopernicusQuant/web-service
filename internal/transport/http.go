@@ -25,9 +25,14 @@ func SetupStoreRoutes(router *gin.Engine, stockHandler *StockHandler) {
 
 	})
 
-	// storeGroup.GET("/stock/:ticker", func(c *gin.Context) {
-	// 	ticker := c.Param("ticker")
-	// 	window := c.Query("window")
-	// 	c.JSON(http.StatusOK, gin.H{"ticker": ticker, "window": window})
-	// })
+	storeGroup.GET("/stock/:ticker", func(c *gin.Context) {
+		ticker := c.Param("ticker")
+		window := c.Query("window")
+		stockPrices, err := stockHandler.GetStockPrices(c.Request.Context(), ticker, window)
+		if err != nil {
+			Fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		OK(c, stockPrices)
+	})
 }

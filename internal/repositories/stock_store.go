@@ -71,12 +71,25 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("stock list loaded", "count", len(stockList))
 	return &StockStore{
 		r2:             r2,
 		runtimeEnv:     runtimeEnv,
 		bucket:         r2Bucket,
 		inMemStockList: stockList,
 		logger:         logger}, nil
+}
+
+func (s *StockStore) GetStockList() map[string]StockInfo {
+	return s.inMemStockList
+}
+
+func (s *StockStore) GetStockInfo(ticker string) (*StockInfo, error) {
+	stockInfo, ok := s.inMemStockList[ticker]
+	if !ok {
+		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
+	}
+	return &stockInfo, nil
 }
 
 // ================== private methods ==================

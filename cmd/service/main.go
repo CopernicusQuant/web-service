@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,11 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/CopernicusQuant/web-service/internal/repositories"
+	"github.com/CopernicusQuant/web-service/internal/transport"
 )
 
 const (
-	PORT_NUMBER = 8800
-	GO_ENV      = "GO_ENV"
+	portNumber = 8800
+	goEnv      = "GO_ENV"
 )
 
 const (
@@ -28,32 +30,41 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	ctx := context.Background()
 	// get runtime env
-	runtimeEnv := os.Getenv(GO_ENV)
+	runtimeEnv := os.Getenv(goEnv)
 	if runtimeEnv != runtimeDev && runtimeEnv != runtimeProd {
 		logger.Warn("invalid runtime env", "env", runtimeEnv)
 		runtimeEnv = runtimeDev
 	}
 
 	// init repositories
-	_, err := repositories.NewStockStore(ctx, runtimeEnv, logger)
+	stockStore, err := repositories.NewStockStore(ctx, runtimeEnv, logger)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
+	// init handlers
+	stockHandler := transport.NewStockStoreHandler(stockStore, logger)
+
 	// create a Gin router
 	router := gin.Default()
 
 	// define routers
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
-	})
+	if runtimeEnv == runtimeDev {
+		router.GET("/ping", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "pong"})
+		})
+	}
+	transport.SetupStoreRoutes(router, stockHandler)
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", PORT_NUMBER),
+		Addr:         fmt.Sprintf(":%d", portNumber),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 	}
-	server.ListenAndServe()
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal("failed to start application %w", err)
+		os.Exit(1)
+	}
 }

@@ -1,17 +1,20 @@
 package repositories
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/parquet-go/parquet-go"
 )
 
 const (
@@ -21,6 +24,7 @@ const (
 	r2BucketEnv             = "R2_BUCKET_NAME"
 	goEnv                   = "GO_ENV"
 	metaDir                 = "meta"
+	stockDir                = "stock"
 	stockListFileNamePrefix = "stock_list"
 )
 
@@ -80,6 +84,13 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 		logger:         logger}, nil
 }
 
+func (s *StockStore) ValidateTicker(ticker string) bool {
+	if _, ok := s.inMemStockList[ticker]; !ok {
+		return false
+	}
+	return true
+}
+
 func (s *StockStore) GetStockList() map[string]StockInfo {
 	return s.inMemStockList
 }
@@ -90,6 +101,18 @@ func (s *StockStore) GetStockInfo(ticker string) (*StockInfo, error) {
 		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
 	}
 	return &stockInfo, nil
+}
+
+func (s *StockStore) ReadStock(ctx context.Context, ticker string, window string) ([]StockPrice, error) {
+	// ensure the ticker is in the in-mem list
+	if _, ok := s.inMemStockList[ticker]; !ok {
+		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
+	}
+	stockPrices, err := readStock(ctx, s.r2, s.bucket, ticker)
+	if err != nil {
+		return nil, err
+	}
+	return stockPrices, nil
 }
 
 // ================== private methods ==================
@@ -162,4 +185,39 @@ func readStockListCSV(source io.Reader, logger *slog.Logger) (map[string]StockIn
 		return nil, fmt.Errorf("Failed to load stock list, current list is empty")
 	}
 	return stockList, nil
+}
+
+func readStock(ctx context.Context, r2 *s3.Client, bucket, ticker string) ([]StockPrice, error) {
+	fileKey := fmt.Sprintf("%s/%s.parquet", stockDir, ticker)
+	object, err := r2.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(fileKey),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get stock object %q: %w", fileKey, err)
+	}
+	defer object.Body.Close()
+	payload, err := io.ReadAll(object.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read stock object %q: %w", fileKey, err)
+	}
+	reader := parquet.NewGenericReader[StockPrice](bytes.NewReader(payload))
+	defer reader.Close()
+
+	var prices []StockPrice
+	buffer := make([]StockPrice, 1024)
+	for {
+		count, err := reader.Read(buffer)
+		prices = append(prices, buffer[:count]...)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("decode parquet %q: %w", fileKey, err)
+		}
+	}
+	sort.Slice(prices, func(i, j int) bool {
+		return prices[i].TradeDate < prices[j].TradeDate
+	})
+	return prices, nil
 }

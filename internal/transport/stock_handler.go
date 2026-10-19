@@ -11,6 +11,11 @@ import (
 
 const approxDaysPerYear int = 252
 
+const (
+	ServerError = "server-side error"
+	ClientError = "client-side error"
+)
+
 var dataWindow map[string]int = map[string]int{
 	"60days":  60,
 	"90days":  90,
@@ -69,12 +74,12 @@ func (h *StockHandler) GetStockPrices(
 	stockPrices, err := h.stockStore.ReadStock(ctx, ticker, window)
 	if err != nil {
 		funcLogger.Error("get stock prices data", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("%s: get stock prices data: %w", ServerError, err)
 	}
 	dataLength, ok := dataWindow[window]
 	if !ok {
 		funcLogger.Error("invalid data window", "window", window)
-		return nil, fmt.Errorf("invalid data window %q", window)
+		return nil, fmt.Errorf("%s: invalid data window %q", ClientError, window)
 	}
 	startIndex := max(0, len(stockPrices)-dataLength)
 	response := toStockPricesResponse(stockPrices[startIndex:])

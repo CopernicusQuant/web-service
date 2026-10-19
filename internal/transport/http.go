@@ -2,6 +2,7 @@ package transport
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +31,11 @@ func SetupStoreRoutes(router *gin.Engine, stockHandler *StockHandler) {
 		window := c.Query("window")
 		stockPrices, err := stockHandler.GetStockPrices(c.Request.Context(), ticker, window)
 		if err != nil {
-			Fail(c, http.StatusBadRequest, err.Error())
+			if strings.HasPrefix(err.Error(), ClientError) {
+				Fail(c, http.StatusBadRequest, err.Error())
+			} else {
+				Fail(c, http.StatusInternalServerError, err.Error())
+			}
 			return
 		}
 		OK(c, stockPrices)

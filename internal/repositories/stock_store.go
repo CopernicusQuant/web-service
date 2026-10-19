@@ -28,12 +28,15 @@ const (
 	stockListFileNamePrefix = "stock_list"
 )
 
+const maxLRUCapacity = 100
+
 type StockStore struct {
 	r2             *s3.Client
 	logger         *slog.Logger
 	bucket         string
 	runtimeEnv     string
 	inMemStockList map[string]StockInfo
+	stockCache     *LRUCache[string, []StockPrice]
 }
 
 func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) (*StockStore, error) {
@@ -76,12 +79,15 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 		return nil, err
 	}
 	logger.Info("stock list loaded", "count", len(stockList))
+	stockCache := NewLRUCache[string, []StockPrice](maxLRUCapacity)
 	return &StockStore{
 		r2:             r2,
 		runtimeEnv:     runtimeEnv,
 		bucket:         r2Bucket,
 		inMemStockList: stockList,
-		logger:         logger}, nil
+		logger:         logger,
+		stockCache:     stockCache,
+	}, nil
 }
 
 func (s *StockStore) ValidateTicker(ticker string) bool {
@@ -108,10 +114,15 @@ func (s *StockStore) ReadStock(ctx context.Context, ticker string, window string
 	if _, ok := s.inMemStockList[ticker]; !ok {
 		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
 	}
+	cachedPrices, found := s.stockCache.Get(ticker)
+	if found {
+		return cachedPrices, nil
+	}
 	stockPrices, err := readStock(ctx, s.r2, s.bucket, ticker)
 	if err != nil {
 		return nil, err
 	}
+	s.stockCache.Put(ticker, stockPrices)
 	return stockPrices, nil
 }
 

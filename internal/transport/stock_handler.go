@@ -11,11 +11,6 @@ import (
 
 const approxDaysPerYear int = 252
 
-const (
-	ServerError = "server-side error"
-	ClientError = "client-side error"
-)
-
 var dataWindow map[string]int = map[string]int{
 	"60days":  60,
 	"90days":  90,
@@ -74,14 +69,29 @@ func (h *StockHandler) GetStockPrices(
 	stockPrices, err := h.stockStore.ReadStock(ctx, ticker, window)
 	if err != nil {
 		funcLogger.Error("get stock prices data", "error", err)
-		return nil, fmt.Errorf("%s: get stock prices data: %w", ServerError, err)
+		return nil, fmt.Errorf("get stock prices data: %w", err)
 	}
 	dataLength, ok := dataWindow[window]
 	if !ok {
 		funcLogger.Error("invalid data window", "window", window)
-		return nil, fmt.Errorf("%s: invalid data window %q", ClientError, window)
+		return nil, fmt.Errorf("invalid data window %q", window)
 	}
 	startIndex := max(0, len(stockPrices)-dataLength)
 	response := toStockPricesResponse(stockPrices[startIndex:])
 	return response, nil
+}
+
+func (h *StockHandler) ValidateTicker(ticker string) error {
+	ticker = strings.ToUpper(ticker)
+	if !h.stockStore.ValidateTicker(ticker) {
+		return fmt.Errorf("invalid ticker name: %q", ticker)
+	}
+	return nil
+}
+
+func (h *StockHandler) ValidateWindow(window string) error {
+	if _, ok := dataWindow[window]; !ok {
+		return fmt.Errorf("invalid window: %q", window)
+	}
+	return nil
 }

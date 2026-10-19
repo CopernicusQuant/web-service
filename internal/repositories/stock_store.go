@@ -84,6 +84,13 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 		logger:         logger}, nil
 }
 
+func (s *StockStore) ValidateTicker(ticker string) bool {
+	if _, ok := s.inMemStockList[ticker]; !ok {
+		return false
+	}
+	return true
+}
+
 func (s *StockStore) GetStockList() map[string]StockInfo {
 	return s.inMemStockList
 }

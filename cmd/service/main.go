@@ -10,7 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/CopernicusQuant/web-service/internal/handlers"
 	"github.com/CopernicusQuant/web-service/internal/repositories"
+	"github.com/CopernicusQuant/web-service/internal/transport"
 )
 
 const (
@@ -35,19 +37,25 @@ func main() {
 	}
 
 	// init repositories
-	_, err := repositories.NewStockStore(ctx, runtimeEnv, logger)
+	stockStore, err := repositories.NewStockStore(ctx, runtimeEnv, logger)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
+	// init handlers
+	stockHandler := handlers.NewStockStoreHandler(stockStore, logger)
+
 	// create a Gin router
 	router := gin.Default()
 
 	// define routers
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
-	})
+	if runtimeEnv == runtimeDev {
+		router.GET("/ping", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "pong"})
+		})
+	}
+	transport.SetupStoreRoutes(router, stockHandler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", PORT_NUMBER),

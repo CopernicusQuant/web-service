@@ -80,8 +80,8 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 		logger:         logger}, nil
 }
 
-func (s *StockStore) GetStockList() *map[string]StockInfo {
-	return &s.inMemStockList
+func (s *StockStore) GetStockList() map[string]StockInfo {
+	return s.inMemStockList
 }
 
 func (s *StockStore) GetStockInfo(ticker string) (*StockInfo, error) {

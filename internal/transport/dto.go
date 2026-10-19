@@ -1,4 +1,4 @@
-package handlers
+package transport
 
 type StockInfoDTO struct {
 	TSCode       string `json:"ts_code"`

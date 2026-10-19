@@ -1,4 +1,4 @@
-package handlers
+package transport
 
 import (
 	"log/slog"
@@ -21,8 +21,8 @@ func NewStockStoreHandler(
 
 func (h *StockHandler) GetStockList() []map[string]string {
 	inMemStockList := h.stockStore.GetStockList()
-	stockList := make([]map[string]string, 0, len(*inMemStockList))
-	for ticker, info := range *inMemStockList {
+	stockList := make([]map[string]string, 0, len(inMemStockList))
+	for ticker, info := range inMemStockList {
 		item := map[string]string{ticker: info.CompanyName}
 		stockList = append(stockList, item)
 	}

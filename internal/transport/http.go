@@ -3,12 +3,11 @@ package transport
 import (
 	"net/http"
 
-	"github.com/CopernicusQuant/web-service/internal/handlers"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupStoreRoutes(router *gin.Engine, stockHandler *handlers.StockHandler) {
-	storeGroup := router.Group("/store")
+func SetupStoreRoutes(router *gin.Engine, stockHandler *StockHandler) {
+	storeGroup := router.Group("/data")
 
 	storeGroup.GET("/stock/list", func(c *gin.Context) {
 		stockList := stockHandler.GetStockList()

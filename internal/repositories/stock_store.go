@@ -25,6 +25,7 @@ const (
 	goEnv                   = "GO_ENV"
 	metaDir                 = "meta"
 	stockDir                = "stock"
+	featureDir              = "feature"
 	stockListFileNamePrefix = "stock_list"
 )
 
@@ -37,11 +38,12 @@ type StockStore struct {
 	runtimeEnv     string
 	inMemStockList map[string]StockInfo
 	stockCache     *LRUCache[string, []StockPrice]
+	featureCache   *LRUCache[string, []StockFeature]
 }
 
 func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) (*StockStore, error) {
 	// read env variables
-	var r2AccessKeyID, r2SecretAccessKey, r2Endpoint, r2Bucket string
+	var r2AccessKeyID, r2SecretAccessKey, r2Endpoint, r2BucketName string
 	if r2AccessKeyID = os.Getenv(r2AccessKeyIDEnv); len(r2AccessKeyID) == 0 {
 		return nil, fmt.Errorf("%s shouldn't be an empty string", r2AccessKeyIDEnv)
 	}
@@ -51,7 +53,7 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 	if r2Endpoint = os.Getenv(r2EndpointEnv); len(r2Endpoint) == 0 {
 		return nil, fmt.Errorf("%s shouldn't be an empty string", r2EndpointEnv)
 	}
-	if r2Bucket = os.Getenv(r2BucketEnv); len(r2Bucket) == 0 {
+	if r2BucketName = os.Getenv(r2BucketEnv); len(r2BucketName) == 0 {
 		return nil, fmt.Errorf("%s shouldn't be an empty string", r2BucketEnv)
 	}
 	// init connection to r2 storage
@@ -74,19 +76,21 @@ func NewStockStore(ctx context.Context, runtimeEnv string, logger *slog.Logger) 
 		return nil, fmt.Errorf("failed to create r2 client")
 	}
 	// load in-memory stock list
-	stockList, err := loadStockList(ctx, r2, r2Bucket, runtimeEnv, logger)
+	stockList, err := loadStockList(ctx, r2, r2BucketName, runtimeEnv, logger)
 	if err != nil {
 		return nil, err
 	}
 	logger.Info("stock list loaded", "count", len(stockList))
 	stockCache := NewLRUCache[string, []StockPrice](maxLRUCapacity)
+	featureCache := NewLRUCache[string, []StockFeature](maxLRUCapacity)
 	return &StockStore{
 		r2:             r2,
 		runtimeEnv:     runtimeEnv,
-		bucket:         r2Bucket,
+		bucket:         r2BucketName,
 		inMemStockList: stockList,
 		logger:         logger,
 		stockCache:     stockCache,
+		featureCache:   featureCache,
 	}, nil
 }
 
@@ -109,7 +113,7 @@ func (s *StockStore) GetStockInfo(ticker string) (*StockInfo, error) {
 	return &stockInfo, nil
 }
 
-func (s *StockStore) ReadStock(ctx context.Context, ticker string, window string) ([]StockPrice, error) {
+func (s *StockStore) ReadStock(ctx context.Context, ticker string) ([]StockPrice, error) {
 	// ensure the ticker is in the in-mem list
 	if _, ok := s.inMemStockList[ticker]; !ok {
 		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
@@ -124,6 +128,22 @@ func (s *StockStore) ReadStock(ctx context.Context, ticker string, window string
 	}
 	s.stockCache.Put(ticker, stockPrices)
 	return stockPrices, nil
+}
+
+func (s *StockStore) ReadFeatures(ctx context.Context, ticker string) ([]StockFeature, error) {
+	if _, ok := s.inMemStockList[ticker]; !ok {
+		return nil, fmt.Errorf("invalid ticker name: %q", ticker)
+	}
+	cachedFeatures, found := s.featureCache.Get(ticker)
+	if found {
+		return cachedFeatures, nil
+	}
+	stockFeatures, err := readFeatures(ctx, s.r2, s.bucket, ticker)
+	if err != nil {
+		return nil, err
+	}
+	s.featureCache.Put(ticker, stockFeatures)
+	return stockFeatures, nil
 }
 
 // ================== private methods ==================
@@ -198,6 +218,7 @@ func readStockListCSV(source io.Reader, logger *slog.Logger) (map[string]StockIn
 	return stockList, nil
 }
 
+// parse stock prices parquet file to GO struct
 func readStock(ctx context.Context, r2 *s3.Client, bucket, ticker string) ([]StockPrice, error) {
 	fileKey := fmt.Sprintf("%s/%s.parquet", stockDir, ticker)
 	object, err := r2.GetObject(ctx, &s3.GetObjectInput{
@@ -231,4 +252,40 @@ func readStock(ctx context.Context, r2 *s3.Client, bucket, ticker string) ([]Sto
 		return prices[i].TradeDate < prices[j].TradeDate
 	})
 	return prices, nil
+}
+
+// parse stock feature parquet file to GO struct
+func readFeatures(ctx context.Context, r2 *s3.Client, bucket, ticker string) ([]StockFeature, error) {
+	fileKey := fmt.Sprintf("%s/%s.parquet", featureDir, ticker)
+	object, err := r2.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(fileKey),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get feature object %q: %w", fileKey, err)
+	}
+	defer object.Body.Close()
+	payload, err := io.ReadAll(object.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read feature object %q: %w", fileKey, err)
+	}
+	reader := parquet.NewGenericReader[StockFeature](bytes.NewReader(payload))
+	defer reader.Close()
+
+	var features []StockFeature
+	buffer := make([]StockFeature, 1024)
+	for {
+		count, err := reader.Read(buffer)
+		features = append(features, buffer[:count]...)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("decode stock feature parquet %q: %w", fileKey, err)
+		}
+	}
+	sort.Slice(features, func(i, j int) bool {
+		return features[i].TradeDate < features[j].TradeDate
+	})
+	return features, nil
 }

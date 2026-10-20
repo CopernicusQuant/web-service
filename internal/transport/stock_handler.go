@@ -56,11 +56,11 @@ func NewStockStoreHandler(
 	return &StockHandler{stockStore: stockStore, logger: logger}
 }
 
-func (h *StockHandler) GetStockList() []map[string]string {
+func (h *StockHandler) GetStockList() [][]string {
 	inMemStockList := h.stockStore.GetStockList()
-	stockList := make([]map[string]string, 0, len(inMemStockList))
+	stockList := make([][]string, 0, len(inMemStockList))
 	for ticker, info := range inMemStockList {
-		item := map[string]string{ticker: info.CompanyName}
+		item := []string{ticker, info.CompanyName}
 		stockList = append(stockList, item)
 	}
 	return stockList

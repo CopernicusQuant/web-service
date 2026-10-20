@@ -112,34 +112,45 @@ func (h *StockHandler) GetStockFeatures(
 	ctx context.Context,
 	ticker,
 	featureGroup string,
-	window string) (response any, err error) {
+	window string) (any, error) {
 	funcLogger := h.logger.With("path", "internal/handlers/stock/GetStockFeatures")
 	ticker = strings.ToUpper(ticker)
 	featureGroup = strings.ToLower(featureGroup)
+	// get stock feature raw data
 	stockFeatures, err := h.stockStore.ReadFeatures(ctx, ticker)
 	if err != nil {
 		funcLogger.Error("get features", "error", err)
-		return response, fmt.Errorf("get features data")
+		return nil, fmt.Errorf("get features data")
 	}
+	// get return data size
+	dataLength, ok := dataWindow[window]
+	if !ok {
+		funcLogger.Error("invalid data window", "window", window)
+		return nil, fmt.Errorf("invalid data window %q", window)
+	}
+	var response any
+	startIndex := max(0, len(stockFeatures)-dataLength)
+	slicedFeatures := stockFeatures[startIndex:]
+	// convert raw data to the corresponding feature group
 	switch featureGroup {
 	case PriceMomentum:
-		response = toPriceMomentumResponse(stockFeatures)
+		response = toPriceMomentumResponse(slicedFeatures)
 	case VolumeMomentum:
-		response = toVolumeMomentumResponse(stockFeatures)
+		response = toVolumeMomentumResponse(slicedFeatures)
 	case MarketActivity:
-		response = toMarketActivityResponse(stockFeatures)
+		response = toMarketActivityResponse(slicedFeatures)
 	case BollingerBands:
-		response = toBollingerBandsResponse(stockFeatures)
+		response = toBollingerBandsResponse(slicedFeatures)
 	case MACD:
-		response = toMACDResponse(stockFeatures)
+		response = toMACDResponse(slicedFeatures)
 	case DEMA:
-		response = toDEMAResponse(stockFeatures)
+		response = toDEMAResponse(slicedFeatures)
 	case RSI:
-		response = toRSIResponse(stockFeatures)
+		response = toRSIResponse(slicedFeatures)
 	case KDJ:
-		response = toKDJResponse(stockFeatures)
+		response = toKDJResponse(slicedFeatures)
 	case OBV:
-		response = toOBVFeatureResponse(stockFeatures)
+		response = toOBVFeatureResponse(slicedFeatures)
 	}
 	return response, nil
 }

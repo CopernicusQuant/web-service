@@ -266,6 +266,9 @@ func readFeatures(ctx context.Context, r2 *s3.Client, bucket, ticker string) ([]
 	}
 	defer object.Body.Close()
 	payload, err := io.ReadAll(object.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read feature object %q: %w", fileKey, err)
+	}
 	reader := parquet.NewGenericReader[StockFeature](bytes.NewReader(payload))
 	defer reader.Close()
 

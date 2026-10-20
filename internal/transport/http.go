@@ -56,7 +56,7 @@ func SetupStoreRoutes(router *gin.Engine, stockHandler *StockHandler) {
 		}
 		featureGroup := c.Query("group")
 		if err := stockHandler.ValidateFeatureGroup(featureGroup); err != nil {
-			Fail(c, http.StatusNotFound, err.Error())
+			Fail(c, http.StatusBadRequest, err.Error())
 			return
 		}
 		window := c.Query("window")

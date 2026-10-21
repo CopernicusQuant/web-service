@@ -51,6 +51,10 @@ type StockFeature struct {
 	VolMa1020Ratio float32 `parquet:"vol_ma_10_20_ratio"`
 	VolMa2060Ratio float32 `parquet:"vol_ma_20_60_ratio"`
 
+	// Volatility
+	VolatilityLog  float32 `parquet:"volatility_log"`
+	VolatilityRank float32 `parquet:"volatility_rank"`
+
 	// OBV features
 	ObvStrength5        float32 `parquet:"obv_strength_5"`
 	ObvStrength20       float32 `parquet:"obv_strength_20"`
@@ -109,4 +113,10 @@ type StockFeature struct {
 	KdjK     float32 `parquet:"kdj_k"`
 	KdjD     float32 `parquet:"kdj_d"`
 	KdjJ     float32 `parquet:"kdj_j"`
+
+	// CCI features
+	Tp     float32 `parquet:"tp"`
+	TpSma  float32 `parquet:"tp_sma"`
+	Cci    float32 `parquet:"cci"`
+	CciMa5 float32 `parquet:"cci_ma_5"`
 }

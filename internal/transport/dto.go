@@ -111,6 +111,24 @@ func toVolumeMomentumResponse(raw []repositories.StockFeature) []VolumeMomentumR
 	return response
 }
 
+type VolatilityResponse struct {
+	TradeDate      string  `json:"trade_date"`
+	VolatilityLog  float32 `json:"volatility_log"`
+	VolatilityRank float32 `json:"volatility_rank"`
+}
+
+func toVolatilityResponse(raw []repositories.StockFeature) []VolatilityResponse {
+	response := make([]VolatilityResponse, len(raw))
+	for i, features := range raw {
+		response[i] = VolatilityResponse{
+			TradeDate:      features.TradeDate,
+			VolatilityLog:  features.VolatilityLog,
+			VolatilityRank: features.VolatilityRank,
+		}
+	}
+	return response
+}
+
 type OBVFeatureResponse struct {
 	TradeDate           string  `json:"trade_date"`
 	ObvStrength5        float32 `json:"obv_strength_5"`
@@ -294,6 +312,28 @@ func toKDJResponse(raw []repositories.StockFeature) []KDJResponse {
 			KdjK:      features.KdjK,
 			KdjD:      features.KdjD,
 			KdjJ:      features.KdjJ,
+		}
+	}
+	return response
+}
+
+type CCIResponse struct {
+	TradeDate string  `json:"trade_date"`
+	Tp        float32 `json:"tp"`
+	TpSma     float32 `json:"tp_sma"`
+	Cci       float32 `json:"cci"`
+	CciMa5    float32 `json:"cci_ma_5"`
+}
+
+func toCCIResponse(raw []repositories.StockFeature) []CCIResponse {
+	response := make([]CCIResponse, len(raw))
+	for i, features := range raw {
+		response[i] = CCIResponse{
+			TradeDate: features.TradeDate,
+			Tp:        features.Tp,
+			TpSma:     features.TpSma,
+			Cci:       features.Cci,
+			CciMa5:    features.CciMa5,
 		}
 	}
 	return response

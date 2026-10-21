@@ -67,20 +67,18 @@ func TestLRUCache(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache := NewLRUCache[string, int](tt.capacity)
 			for _, op := range tt.ops {
-				t.Run(op.name, func(t *testing.T) {
-					switch op.action {
-					case "put":
-						cache.Put(op.key, op.value)
-					case "get":
-						got, found := cache.Get(op.key)
-						assert.Equal(t, op.wantFound, found)
-						if found {
-							assert.Equal(t, op.wantValue, got)
-						}
-					default:
-						t.Fatalf("unknown action: %q", op.action)
+				switch op.action {
+				case "put":
+					cache.Put(op.key, op.value)
+				case "get":
+					got, found := cache.Get(op.key)
+					assert.Equal(t, op.wantFound, found)
+					if found {
+						assert.Equal(t, op.wantValue, got)
 					}
-				})
+				default:
+					t.Fatalf("unknown action: %q", op.action)
+				}
 			}
 		})
 	}

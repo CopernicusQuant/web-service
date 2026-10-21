@@ -15,6 +15,7 @@ const approxDaysPerYear int = 252
 const (
 	PriceMomentum  = "pricemomentum"
 	VolumeMomentum = "volumemomentum"
+	Volatility     = "volatility"
 	MarketActivity = "marketactivity"
 	BollingerBands = "bollingerbands"
 	MACD           = "macd"
@@ -22,11 +23,13 @@ const (
 	RSI            = "rsi"
 	KDJ            = "kdj"
 	OBV            = "obv"
+	CCI            = "cci"
 )
 
 var validFeatureGroups []string = []string{
 	PriceMomentum,
 	VolumeMomentum,
+	Volatility,
 	MarketActivity,
 	BollingerBands,
 	MACD,
@@ -34,6 +37,7 @@ var validFeatureGroups []string = []string{
 	RSI,
 	KDJ,
 	OBV,
+	CCI,
 }
 
 var dataWindow map[string]int = map[string]int{
@@ -137,6 +141,8 @@ func (h *StockHandler) GetStockFeatures(
 		response = toPriceMomentumResponse(slicedFeatures)
 	case VolumeMomentum:
 		response = toVolumeMomentumResponse(slicedFeatures)
+	case Volatility:
+		response = toVolatilityResponse(slicedFeatures)
 	case MarketActivity:
 		response = toMarketActivityResponse(slicedFeatures)
 	case BollingerBands:
@@ -151,6 +157,8 @@ func (h *StockHandler) GetStockFeatures(
 		response = toKDJResponse(slicedFeatures)
 	case OBV:
 		response = toOBVFeatureResponse(slicedFeatures)
+	case CCI:
+		response = toCCIResponse(slicedFeatures)
 	}
 	return response, nil
 }

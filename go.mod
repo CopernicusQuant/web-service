@@ -1,4 +1,4 @@
-module github.com/CopernicusQuant/web-service
+module github.com/copernicus-ml/web-service
 
 go 1.26.3
 

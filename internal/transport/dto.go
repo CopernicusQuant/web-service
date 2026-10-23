@@ -1,6 +1,6 @@
 package transport
 
-import "github.com/CopernicusQuant/web-service/internal/repositories"
+import "github.com/copernicus-ml/web-service/internal/repositories"
 
 type StockInfoResponse struct {
 	TSCode       string `json:"ts_code"`

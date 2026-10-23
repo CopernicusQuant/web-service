@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/CopernicusQuant/web-service/internal/repositories"
+	"github.com/copernicus-ml/web-service/internal/repositories"
 )
 
 const approxDaysPerYear int = 252

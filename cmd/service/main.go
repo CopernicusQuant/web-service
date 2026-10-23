@@ -12,8 +12,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"github.com/CopernicusQuant/web-service/internal/repositories"
-	"github.com/CopernicusQuant/web-service/internal/transport"
+	"github.com/copernicus-ml/web-service/internal/repositories"
+	"github.com/copernicus-ml/web-service/internal/transport"
 )
 
 const (
@@ -50,7 +50,7 @@ func main() {
 	// create a Gin router
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:4173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
